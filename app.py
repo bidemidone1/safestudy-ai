@@ -1,6 +1,6 @@
 import streamlit as st
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 # =============================
 # PAGE CONFIGURATION
@@ -18,17 +18,13 @@ st.title("📘 SafeStudy AI")
 st.subheader("Learn the right way — responsibly and safely")
 
 # =============================
-# LOAD MODEL (CACHED)
+# LOAD MODEL (CPU SAFE)
 # =============================
 @st.cache_resource
 def load_model():
-    model_name = "mistralai/Mistral-7B-Instruct-v0.2"
+    model_name = "google/flan-t5-base"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch.float16,
-        device_map="auto"
-    )
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
     return tokenizer, model
 
 tokenizer, model = load_model()
@@ -61,7 +57,7 @@ task = st.sidebar.radio(
 )
 
 # =============================
-# USER INPUT BOX
+# USER INPUT
 # =============================
 user_input = st.text_area(
     "Enter your topic or question:",
@@ -72,7 +68,7 @@ user_input = st.text_area(
 generate_button = st.button("Generate Response")
 
 # =============================
-# RESPONSE FUNCTION
+# RESPONSE GENERATION FUNCTION
 # =============================
 def generate_response(task, user_input):
     if not user_input.strip():
@@ -89,21 +85,18 @@ Student Input:
 Response:
 """
 
-    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    inputs = tokenizer(prompt, return_tensors="pt")
 
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
-            max_new_tokens=300,
-            temperature=0.5,
-            top_p=0.9,
-            do_sample=True
+            max_new_tokens=300
         )
 
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
 # =============================
-# GENERATE OUTPUT
+# DISPLAY OUTPUT
 # =============================
 if generate_button:
     with st.spinner("Thinking..."):

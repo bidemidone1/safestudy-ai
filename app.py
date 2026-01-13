@@ -2,24 +2,24 @@ import streamlit as st
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-# ======================================
+# ==============================
 # PAGE CONFIGURATION
-# ======================================
+# ==============================
 st.set_page_config(
     page_title="SafeStudy AI",
-    page_icon="📘",
+    page_icon="馃摌",
     layout="centered"
 )
 
-st.title("📘 SafeStudy AI")
-st.subheader("Learn the right way — responsibly and safely")
+st.title("馃摌 SafeStudy AI")
+st.subheader("Learn the right way 鈥� responsibly and safely")
 
-# ======================================
-# LOAD MODEL (SMALL + CPU SAFE)
-# ======================================
+# ==============================
+# LOAD MODEL (FAST + CPU SAFE)
+# ==============================
 @st.cache_resource
 def load_model():
-    model_name = "google/flan-t5-small"  # FAST & RELIABLE
+    model_name = "google/flan-t5-small"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(
         model_name,
@@ -31,24 +31,22 @@ def load_model():
 with st.spinner("Loading model (first startup may take ~20 seconds)..."):
     tokenizer, model = load_model()
 
-# ======================================
+# ==============================
 # SAFETY SYSTEM PROMPT
-# ======================================
-SYSTEM_PROMPT = """
-You are SafeStudy AI, a responsible study assistant.
+# ==============================
+SYSTEM_PROMPT = (
+    "You are SafeStudy AI, a responsible study assistant.\n"
+    "Rules:\n"
+    "- Do NOT complete exams, quizzes, or graded assignments.\n"
+    "- Explain concepts step by step instead of giving final answers.\n"
+    "- Refuse requests that promote cheating or harm.\n"
+    "- Keep responses age-appropriate and educational.\n"
+)
 
-Rules:
-- Do NOT complete exams, quizzes, or graded assignments.
-- Explain concepts step by step instead of giving final answers.
-- Refuse requests that promote cheating or harm.
-- Keep responses age-appropriate and educational.
-"""
-
-# ======================================
+# ==============================
 # SIDEBAR CONTROLS
-# ======================================
-st.sidebar.header("📚 Study Mode")
-
+# ==============================
+st.sidebar.header("馃摎 Study Mode")
 task = st.sidebar.radio(
     "Choose a task:",
     [
@@ -58,9 +56,9 @@ task = st.sidebar.radio(
     ]
 )
 
-# ======================================
+# ==============================
 # USER INPUT
-# ======================================
+# ==============================
 user_input = st.text_area(
     "Enter your topic or question:",
     height=160,
@@ -69,19 +67,19 @@ user_input = st.text_area(
 
 generate_button = st.button("Generate Response")
 
-# ======================================
+# ==============================
 # RESPONSE GENERATION
-# ======================================
+# ==============================
 def generate_response(task, text):
     if not text.strip():
-        return "⚠️ Please enter a topic or question."
+        return "Please enter a topic or question."
 
-    prompt = f"""
-{SYSTEM_PROMPT}
-Task: {task}
-Student Input: {text}
-Response:
-"""
+    prompt = (
+        SYSTEM_PROMPT
+        + "\nTask: " + task
+        + "\nStudent Input: " + text
+        + "\nResponse:"
+    )
 
     inputs = tokenizer(prompt, return_tensors="pt")
 
@@ -93,17 +91,17 @@ Response:
 
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-# ======================================
+# ==============================
 # OUTPUT
-# ======================================
+# ==============================
 if generate_button:
     with st.spinner("Thinking..."):
         response = generate_response(task, user_input)
-        st.markdown("### ✅ SafeStudy AI Response")
+        st.markdown("### 鉁� SafeStudy AI Response")
         st.write(response)
 
-# ======================================
+# ==============================
 # FOOTER
-# ======================================
+# ==============================
 st.markdown("---")
 st.caption("SafeStudy AI promotes learning, not cheating.")

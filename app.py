@@ -1,60 +1,37 @@
-import streamlit as st
-import torch
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import gradio as gr
+from transformers import pipeline
 
-st.set_page_config(page_title="SafeStudy AI", layout="centered")
+# 1. Load the model pipeline
+# Using a small, efficient model for the demo
+pipe = pipeline("text-generation", model="HuggingFaceH4/zephyr-7b-beta")
 
-st.title("SafeStudy AI")
-st.write("A responsible AI study assistant.")
+def medical_assistant(user_input):
+    # Safety Check: Simple Keyword Filter
+    emergency_keywords = ["chest pain", "suicide", "stroke", "bleeding"]
+    if any(k in user_input.lower() for k in emergency_keywords):
+        return "🚨 EMERGENCY DETECTED: Please contact your local emergency services (911) immediately. I am an AI and cannot assist with medical emergencies."
 
-@st.cache_resource
-def load_model():
-    model_name = "google/flan-t5-small"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-    model.eval()
-    return tokenizer, model
+    # Prompt Engineering for Reliability
+    system_prompt = f"System: You are a medical information bot. Provide general info only. User: {user_input}"
+    
+    response = pipe(system_prompt, max_new_tokens=200, do_sample=True)[0]['generated_text']
+    
+    # Cleaning response to remove system prompt
+    final_output = response.split("User:")[-1].strip()
+    
+    return f"{final_output}\n\n---\n*Disclaimer: This is for informational purposes only. Consult a doctor for medical advice.*"
 
-with st.spinner("Loading model. First startup may take about 20 seconds."):
-    tokenizer, model = load_model()
+# 2. Build the Gradio Interface
+with gr.Blocks(theme=gr.themes.Soft()) as demo:
+    gr.Markdown("# 🏥 SafeStep Health Assistant")
+    gr.Markdown("Ask general medical questions. Diagnoses and emergencies are automatically blocked.")
+    
+    with gr.Row():
+        input_text = gr.Textbox(label="Enter your question (e.g., 'What are the symptoms of Vitamin D deficiency?')")
+    
+    submit_btn = gr.Button("Get Information")
+    output_text = gr.Markdown(label="Response")
 
-SYSTEM_PROMPT = (
-    "You are SafeStudy AI, a responsible study assistant.\n"
-    "Rules:\n"
-    "- Do not complete exams, quizzes, or graded assignments.\n"
-    "- Explain concepts step by step instead of giving final answers.\n"
-    "- Refuse requests that promote cheating or harm.\n"
-    "- Keep responses educational and age appropriate.\n"
-)
+    submit_btn.click(fn=medical_assistant, inputs=input_text, outputs=output_text)
 
-st.sidebar.header("Study Mode")
-task = st.sidebar.radio(
-    "Choose a task",
-    ["Explain a concept", "Summarize notes", "Create practice questions"]
-)
-
-user_input = st.text_area("Enter your topic or question", height=150)
-generate_button = st.button("Generate response")
-
-def generate_response(task, text):
-    if not text.strip():
-        return "Please enter a topic or question."
-    prompt = (
-        SYSTEM_PROMPT +
-        "\nTask: " + task +
-        "\nStudent input: " + text +
-        "\nResponse:"
-    )
-    inputs = tokenizer(prompt, return_tensors="pt")
-    with torch.no_grad():
-        output = model.generate(**inputs, max_new_tokens=200)
-    return tokenizer.decode(output[0], skip_special_tokens=True)
-
-if generate_button:
-    with st.spinner("Generating response..."):
-        result = generate_response(task, user_input)
-        st.subheader("SafeStudy AI Response")
-        st.write(result)
-
-st.markdown("---")
-st.caption("SafeStudy AI promotes learning, not cheating.")
+demo.launch()
